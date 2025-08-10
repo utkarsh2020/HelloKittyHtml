@@ -71,6 +71,7 @@ class BaseLevel extends Phaser.Scene {
         // UI Text
         this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '24px', fill: '#000' });
         this.livesText = this.add.text(16, 50, 'Lives: 3', { fontSize: '24px', fill: '#000' });
+        this.levelText = this.add.text(16, 84, 'Level: ' + this.level, { fontSize: '24px', fill: '#000' });
         
         // Mobile controls
         this.createMobileControls();
@@ -359,6 +360,7 @@ class BaseLevel extends Phaser.Scene {
             const restartBtn = this.add.rectangle(400, 400, 200, 60, 0x2196F3, 0.8)
                 .setInteractive()
                 .on('pointerdown', () => {
+                    restartBtn.destroy(); // Remove button after click
                     this.scene.start('Level1');
                 });
             
@@ -397,7 +399,7 @@ class BaseLevel extends Phaser.Scene {
     }
     
     gameOver() {
-        this.gameOver = true;
+        this.gameOverState = true;
         
         // Stop all physics and animations
         this.physics.pause();
@@ -409,6 +411,18 @@ class BaseLevel extends Phaser.Scene {
         
         this.add.text(400, 300, 'Game Over!\nPress R to restart', 
             { fontSize: '32px', fill: '#ff0000', align: 'center' }).setOrigin(0.5);
+        
+        // Add restart button for mobile/desktop
+        const restartBtn = this.add.rectangle(400, 400, 200, 60, 0x4CAF50, 0.8)
+            .setInteractive()
+            .on('pointerdown', () => {
+                restartBtn.destroy(); // Remove button after click
+                this.scene.start('Level1');
+            });
+        
+        this.add.text(400, 400, 'RESTART GAME', 
+            { fontSize: '20px', fill: '#fff', fontStyle: 'bold' })
+            .setOrigin(0.5);
         
         this.input.keyboard.once('keydown-R', () => {
             this.scene.start('Level1');
