@@ -22,7 +22,7 @@ function preload() {
   this.load.image('bg', 'assets/background.png');             // optional background
   this.load.image('platform', 'assets/platform.png');        // optional platform image
   this.load.image('coin', 'assets/coin.png');                // optional coin
-  this.load.image('hello', 'assets/hello_kitty.png');        // your provided kitty image
+  this.load.image('hello', 'assets/hello kitty.png');        // your provided kitty image
   this.load.image('kuromi', 'assets/kiromi.png');            // enemy image
 }
 
