@@ -88,22 +88,22 @@ class BaseLevel extends Phaser.Scene {
         
         // Level-specific platforms with proper vertical spacing (player height = 40px, so 80px+ gaps)
         if (this.level === 1) {
-            this.platforms.create(250, 450, 'ground').setScale(1.25, 0.33).refreshBody();
-            this.platforms.create(450, 350, 'ground').setScale(1.25, 0.33).refreshBody();
-            this.platforms.create(650, 250, 'ground').setScale(1.25, 0.33).refreshBody();
+            this.platforms.create(250, 450 - 35, 'ground').setScale(1.25, 0.33).refreshBody(); // Adjust y-position to account for enemy height
+            this.platforms.create(450, 350 - 35, 'ground').setScale(1.25, 0.33).refreshBody();
+            this.platforms.create(650, 250 - 35, 'ground').setScale(1.25, 0.33).refreshBody();
         } else if (this.level === 2) {
-            this.platforms.create(190, 500, 'ground').setScale(1, 0.33).refreshBody();
-            this.platforms.create(340, 400, 'ground').setScale(1, 0.33).refreshBody();
-            this.platforms.create(540, 300, 'ground').setScale(1, 0.33).refreshBody();
-            this.platforms.create(140, 200, 'ground').setScale(1, 0.33).refreshBody();
-            this.platforms.create(700, 150, 'ground').setScale(1.25, 0.33).refreshBody();
+            this.platforms.create(190, 500 - 35, 'ground').setScale(1, 0.33).refreshBody();
+            this.platforms.create(340, 400 - 35, 'ground').setScale(1, 0.33).refreshBody();
+            this.platforms.create(540, 300 - 35, 'ground').setScale(1, 0.33).refreshBody();
+            this.platforms.create(140, 200 - 35, 'ground').setScale(1, 0.33).refreshBody();
+            this.platforms.create(700, 150 - 35, 'ground').setScale(1.25, 0.33).refreshBody();
         } else if (this.level === 3) {
             // Level 3: Much better spacing - at least 100px between platforms
-            this.platforms.create(130, 460, 'ground').setScale(0.75, 0.33).refreshBody();
-            this.platforms.create(300, 350, 'ground').setScale(0.75, 0.33).refreshBody();
-            this.platforms.create(500, 240, 'ground').setScale(0.75, 0.33).refreshBody();
-            this.platforms.create(200, 130, 'ground').setScale(0.75, 0.33).refreshBody();
-            this.platforms.create(650, 350, 'ground').setScale(0.75, 0.33).refreshBody();
+            this.platforms.create(130, 460 - 35, 'ground').setScale(0.75, 0.33).refreshBody();
+            this.platforms.create(300, 350 - 35, 'ground').setScale(0.75, 0.33).refreshBody();
+            this.platforms.create(500, 240 - 35, 'ground').setScale(0.75, 0.33).refreshBody();
+            this.platforms.create(200, 130 - 35, 'ground').setScale(0.75, 0.33).refreshBody();
+            this.platforms.create(650, 350 - 35, 'ground').setScale(0.75, 0.33).refreshBody();
         }
     }
 
