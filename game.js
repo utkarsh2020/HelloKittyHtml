@@ -365,19 +365,18 @@ class BaseLevel extends Phaser.Scene {
         
         // Enemy AI based on Python implementation
         this.enemies.children.iterate(enemy => {
-            // Check for world bounds collision first
-            if (enemy.x <= enemy.width/2 || enemy.x >= 800 - enemy.width/2) {
+            if (!enemy.active) return;
+            
+            // Simple edge detection - change direction when hitting screen edges
+            if (enemy.x <= 30 && enemy.direction === -1) {
                 enemy.direction *= -1;
-                enemy.setVelocityX(enemy.speed * enemy.direction);
-                // Move enemy slightly away from edge to prevent sticking
-                if (enemy.x <= enemy.width/2) {
-                    enemy.x = enemy.width/2 + 1;
-                } else {
-                    enemy.x = 800 - enemy.width/2 - 1;
-                }
-                return; // Skip other checks this frame
+                enemy.x = 31; // Move slightly away from edge
+            } else if (enemy.x >= 770 && enemy.direction === 1) {
+                enemy.direction *= -1;
+                enemy.x = 769; // Move slightly away from edge
             }
             
+            // Handle jumping enemies
             if (enemy.enemyType === 'jumper') {
                 enemy.jumpTimer += 1;
                 if (enemy.jumpTimer > 60 && enemy.body.touching.down) {
@@ -386,32 +385,14 @@ class BaseLevel extends Phaser.Scene {
                 }
             }
             
-            // Horizontal movement
+            // Apply horizontal movement
             enemy.setVelocityX(enemy.speed * enemy.direction);
             
-            // Check if enemy will fall off platform
+            // Platform edge detection - change direction if about to fall off platform
             if (enemy.body.touching.down) {
-                let willFall = true;
-                const futureX = enemy.x + (enemy.speed * enemy.direction * 0.2);
-                
-                this.platforms.children.entries.forEach(platform => {
-                    const platformRect = platform.getBounds();
-                    if (enemy.y + enemy.height >= platformRect.top - 5 && 
-                        enemy.y + enemy.height <= platformRect.bottom + 5 &&
-                        futureX >= platformRect.left - enemy.width/2 && 
-                        futureX <= platformRect.right + enemy.width/2) {
-                        willFall = false;
-                    }
-                });
-                
-                // Also check ground
-                if (enemy.y + enemy.height >= 540 && futureX >= enemy.width/2 && futureX <= 800 - enemy.width/2) {
-                    willFall = false;
-                }
-                
-                if (willFall) {
+                const futureX = enemy.x + (enemy.direction * 40); // Check 40 pixels ahead
+                if (futureX < 30 || futureX > 770) {
                     enemy.direction *= -1;
-                    enemy.setVelocityX(enemy.speed * enemy.direction);
                 }
             }
         });
