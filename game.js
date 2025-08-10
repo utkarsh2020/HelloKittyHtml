@@ -29,7 +29,6 @@ class BaseLevel extends Phaser.Scene {
         this.invincibleTimer = 0;
         this.allCoinsCollected = false;
         this.flag = null;
-        this.gameOver = false;
 
         // Platforms - exact layout from Python implementation
         this.platforms = this.physics.add.staticGroup();
@@ -199,6 +198,7 @@ class BaseLevel extends Phaser.Scene {
         enemy.setCollideWorldBounds(true);
         enemy.enemyType = type;
         enemy.direction = -1;
+        enemy.platformBounds = this.getPlatformBounds(x, y);
         
         // Set properties based on enemy type (like Python version)
         if (type === 'fast') {
@@ -215,6 +215,63 @@ class BaseLevel extends Phaser.Scene {
         enemy.setVelocityX(enemy.speed * enemy.direction);
     }
 
+    getPlatformBounds(x, y) {
+        // Determine which platform this enemy is on and return its bounds
+        const tolerance = 50; // How close the enemy needs to be to a platform
+        
+        // Check ground level first
+        if (y > 500) {
+            return { left: 30, right: 770 }; // Ground bounds
+        }
+        
+        // Check level-specific platforms
+        if (this.level === 1) {
+            if (Math.abs(y - 450) < tolerance && Math.abs(x - 250) < 100) {
+                return { left: 175, right: 325 }; // Platform 1 bounds
+            }
+            if (Math.abs(y - 350) < tolerance && Math.abs(x - 450) < 100) {
+                return { left: 375, right: 525 }; // Platform 2 bounds
+            }
+            if (Math.abs(y - 250) < tolerance && Math.abs(x - 650) < 100) {
+                return { left: 575, right: 725 }; // Platform 3 bounds
+            }
+        } else if (this.level === 2) {
+            if (Math.abs(y - 500) < tolerance && Math.abs(x - 190) < 80) {
+                return { left: 130, right: 250 };
+            }
+            if (Math.abs(y - 400) < tolerance && Math.abs(x - 340) < 80) {
+                return { left: 280, right: 400 };
+            }
+            if (Math.abs(y - 300) < tolerance && Math.abs(x - 540) < 80) {
+                return { left: 480, right: 600 };
+            }
+            if (Math.abs(y - 200) < tolerance && Math.abs(x - 140) < 80) {
+                return { left: 80, right: 200 };
+            }
+            if (Math.abs(y - 150) < tolerance && Math.abs(x - 700) < 100) {
+                return { left: 625, right: 775 };
+            }
+        } else if (this.level === 3) {
+            if (Math.abs(y - 460) < tolerance && Math.abs(x - 130) < 60) {
+                return { left: 85, right: 175 };
+            }
+            if (Math.abs(y - 350) < tolerance && Math.abs(x - 300) < 60) {
+                return { left: 255, right: 345 };
+            }
+            if (Math.abs(y - 240) < tolerance && Math.abs(x - 500) < 60) {
+                return { left: 455, right: 545 };
+            }
+            if (Math.abs(y - 130) < tolerance && Math.abs(x - 200) < 60) {
+                return { left: 155, right: 245 };
+            }
+            if (Math.abs(y - 350) < tolerance && Math.abs(x - 650) < 60) {
+                return { left: 605, right: 695 };
+            }
+        }
+        
+        // Default to screen bounds if no platform found
+        return { left: 30, right: 770 };
+    }
     collectCoin(player, coin) {
         coin.disableBody(true, true);
         this.score += 10;
@@ -288,8 +345,30 @@ class BaseLevel extends Phaser.Scene {
             this.scene.start(this.nextLevel);
         } else {
             // Game completed
+            this.physics.pause();
+            
+            // Disable mobile controls
+            this.leftButtonPressed = false;
+            this.rightButtonPressed = false;
+            this.jumpButtonPressed = false;
+            
             this.add.text(400, 300, 'Congratulations!\nYou completed all levels!', 
                 { fontSize: '32px', fill: '#000', align: 'center' }).setOrigin(0.5);
+            
+            // Restart button for completed game
+            const restartBtn = this.add.rectangle(400, 400, 200, 60, 0x2196F3, 0.8)
+                .setInteractive()
+                .on('pointerdown', () => {
+                    this.scene.start('Level1');
+                });
+            
+            this.add.text(400, 400, 'PLAY AGAIN', 
+                { fontSize: '20px', fill: '#fff', fontStyle: 'bold' })
+                .setOrigin(0.5);
+            
+            this.input.keyboard.once('keydown-R', () => {
+                this.scene.start('Level1');
+            });
         }
     }
 
@@ -311,6 +390,7 @@ class BaseLevel extends Phaser.Scene {
                 
                 if (this.lives <= 0) {
                     this.gameOver();
+                    return; // Stop further processing
                 }
             }
         }
@@ -337,7 +417,7 @@ class BaseLevel extends Phaser.Scene {
 
     update() {
         // Stop all updates if game is over
-        if (this.gameOver) {
+        if (this.gameOverState) {
             return;
         }
         
@@ -367,13 +447,15 @@ class BaseLevel extends Phaser.Scene {
         this.enemies.children.iterate(enemy => {
             if (!enemy.active) return;
             
-            // Simple edge detection - change direction when hitting screen edges
-            if (enemy.x <= 30 && enemy.direction === -1) {
+            // Platform-aware edge detection
+            const bounds = enemy.platformBounds || { left: 30, right: 770 };
+            
+            if (enemy.x <= bounds.left && enemy.direction === -1) {
                 enemy.direction *= -1;
-                enemy.x = 31; // Move slightly away from edge
-            } else if (enemy.x >= 770 && enemy.direction === 1) {
+                enemy.x = bounds.left + 1; // Move slightly away from edge
+            } else if (enemy.x >= bounds.right && enemy.direction === 1) {
                 enemy.direction *= -1;
-                enemy.x = 769; // Move slightly away from edge
+                enemy.x = bounds.right - 1; // Move slightly away from edge
             }
             
             // Handle jumping enemies
@@ -387,18 +469,10 @@ class BaseLevel extends Phaser.Scene {
             
             // Apply horizontal movement
             enemy.setVelocityX(enemy.speed * enemy.direction);
-            
-            // Platform edge detection - change direction if about to fall off platform
-            if (enemy.body.touching.down) {
-                const futureX = enemy.x + (enemy.direction * 40); // Check 40 pixels ahead
-                if (futureX < 30 || futureX > 770) {
-                    enemy.direction *= -1;
-                }
-            }
         });
 
         // Player movement (like Python version) - Include mobile controls
-        if (!this.gameOver) {
+        if (!this.gameOverState) {
             if (this.cursors.left.isDown || this.leftButtonPressed) {
                 this.player.setVelocityX(-180);
                 this.player.setFlipX(true);
