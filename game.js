@@ -323,9 +323,9 @@ class BaseLevel extends Phaser.Scene {
         this.physics.pause();
         
         // Disable mobile controls
-        this.leftPressed = false;
-        this.rightPressed = false;
-        this.jumpPressed = false;
+        this.leftButtonPressed = false;
+        this.rightButtonPressed = false;
+        this.jumpButtonPressed = false;
         
         this.add.text(400, 300, 'Game Over!\nPress R to restart', 
             { fontSize: '32px', fill: '#ff0000', align: 'center' }).setOrigin(0.5);
@@ -365,6 +365,19 @@ class BaseLevel extends Phaser.Scene {
         
         // Enemy AI based on Python implementation
         this.enemies.children.iterate(enemy => {
+            // Check for world bounds collision first
+            if (enemy.x <= enemy.width/2 || enemy.x >= 800 - enemy.width/2) {
+                enemy.direction *= -1;
+                enemy.setVelocityX(enemy.speed * enemy.direction);
+                // Move enemy slightly away from edge to prevent sticking
+                if (enemy.x <= enemy.width/2) {
+                    enemy.x = enemy.width/2 + 1;
+                } else {
+                    enemy.x = 800 - enemy.width/2 - 1;
+                }
+                return; // Skip other checks this frame
+            }
+            
             if (enemy.enemyType === 'jumper') {
                 enemy.jumpTimer += 1;
                 if (enemy.jumpTimer > 60 && enemy.body.touching.down) {
@@ -376,33 +389,23 @@ class BaseLevel extends Phaser.Scene {
             // Horizontal movement
             enemy.setVelocityX(enemy.speed * enemy.direction);
             
-            // Improved boundary and platform edge detection
-            const nextX = enemy.x + (enemy.speed * enemy.direction * 0.1); // Predict next position
-            
-            // Turn around at screen edges
-            if (nextX <= 0 || nextX >= 765) {
-                enemy.direction *= -1;
-                enemy.setVelocityX(enemy.speed * enemy.direction);
-                return; // Skip other checks this frame
-            }
-            
             // Check if enemy will fall off platform
             if (enemy.body.touching.down) {
                 let willFall = true;
-                const futureX = nextX + (enemy.width / 2);
+                const futureX = enemy.x + (enemy.speed * enemy.direction * 0.2);
                 
                 this.platforms.children.entries.forEach(platform => {
                     const platformRect = platform.getBounds();
                     if (enemy.y + enemy.height >= platformRect.top - 5 && 
                         enemy.y + enemy.height <= platformRect.bottom + 5 &&
-                        futureX >= platformRect.left && 
-                        futureX <= platformRect.right) {
+                        futureX >= platformRect.left - enemy.width/2 && 
+                        futureX <= platformRect.right + enemy.width/2) {
                         willFall = false;
                     }
                 });
                 
                 // Also check ground
-                if (enemy.y + enemy.height >= 540 && futureX >= 0 && futureX <= 800) {
+                if (enemy.y + enemy.height >= 540 && futureX >= enemy.width/2 && futureX <= 800 - enemy.width/2) {
                     willFall = false;
                 }
                 
@@ -415,10 +418,10 @@ class BaseLevel extends Phaser.Scene {
 
         // Player movement (like Python version) - Include mobile controls
         if (!this.gameOver) {
-            if (this.cursors.left.isDown || this.leftPressed) {
+            if (this.cursors.left.isDown || this.leftButtonPressed) {
                 this.player.setVelocityX(-180);
                 this.player.setFlipX(true);
-            } else if (this.cursors.right.isDown || this.rightPressed) {
+            } else if (this.cursors.right.isDown || this.rightButtonPressed) {
                 this.player.setVelocityX(180);
                 this.player.setFlipX(false);
             } else {
@@ -426,56 +429,78 @@ class BaseLevel extends Phaser.Scene {
             }
 
             // Jumping (like Python version) - Fixed spacebar detection
-            if ((this.cursors.up.isDown || this.spaceKey.isDown || this.jumpPressed) && this.player.body.touching.down) {
+            if ((this.cursors.up.isDown || this.spaceKey.isDown || this.jumpButtonPressed) && this.player.body.touching.down) {
                 this.player.setVelocityY(-480);
             }
         }
-        
-        // Reset mobile control flags
-        this.leftPressed = false;
-        this.rightPressed = false;
-        this.jumpPressed = false;
     }
     
     createMobileControls() {
         // Mobile control flags
-        this.leftPressed = false;
-        this.rightPressed = false;
-        this.jumpPressed = false;
+        this.leftButtonPressed = false;
+        this.rightButtonPressed = false;
+        this.jumpButtonPressed = false;
         
-        // Left button
-        const leftBtn = this.add.rectangle(80, 520, 60, 60, 0x000000, 0.3)
+        // Left button - larger and more translucent
+        const leftBtn = this.add.rectangle(70, 500, 80, 80, 0x000000, 0.2)
             .setScrollFactor(0)
             .setInteractive()
-            .on('pointerdown', () => { this.leftPressed = true; })
-            .on('pointerup', () => { this.leftPressed = false; })
-            .on('pointerout', () => { this.leftPressed = false; });
+            .on('pointerdown', () => { 
+                this.leftButtonPressed = true;
+                leftBtn.setAlpha(0.5); // Visual feedback
+            })
+            .on('pointerup', () => { 
+                this.leftButtonPressed = false;
+                leftBtn.setAlpha(0.2);
+            })
+            .on('pointerout', () => { 
+                this.leftButtonPressed = false;
+                leftBtn.setAlpha(0.2);
+            });
         
-        this.add.text(80, 520, '←', { fontSize: '32px', fill: '#fff' })
+        this.add.text(70, 500, '←', { fontSize: '40px', fill: '#fff' })
             .setOrigin(0.5)
             .setScrollFactor(0);
         
-        // Right button
-        const rightBtn = this.add.rectangle(160, 520, 60, 60, 0x000000, 0.3)
+        // Right button - larger and more translucent
+        const rightBtn = this.add.rectangle(170, 500, 80, 80, 0x000000, 0.2)
             .setScrollFactor(0)
             .setInteractive()
-            .on('pointerdown', () => { this.rightPressed = true; })
-            .on('pointerup', () => { this.rightPressed = false; })
-            .on('pointerout', () => { this.rightPressed = false; });
+            .on('pointerdown', () => { 
+                this.rightButtonPressed = true;
+                rightBtn.setAlpha(0.5); // Visual feedback
+            })
+            .on('pointerup', () => { 
+                this.rightButtonPressed = false;
+                rightBtn.setAlpha(0.2);
+            })
+            .on('pointerout', () => { 
+                this.rightButtonPressed = false;
+                rightBtn.setAlpha(0.2);
+            });
         
-        this.add.text(160, 520, '→', { fontSize: '32px', fill: '#fff' })
+        this.add.text(170, 500, '→', { fontSize: '40px', fill: '#fff' })
             .setOrigin(0.5)
             .setScrollFactor(0);
         
-        // Jump button
-        const jumpBtn = this.add.rectangle(680, 520, 80, 60, 0x000000, 0.3)
+        // Jump button - larger and more translucent
+        const jumpBtn = this.add.rectangle(680, 500, 100, 80, 0x000000, 0.2)
             .setScrollFactor(0)
             .setInteractive()
-            .on('pointerdown', () => { this.jumpPressed = true; })
-            .on('pointerup', () => { this.jumpPressed = false; })
-            .on('pointerout', () => { this.jumpPressed = false; });
+            .on('pointerdown', () => { 
+                this.jumpButtonPressed = true;
+                jumpBtn.setAlpha(0.5); // Visual feedback
+            })
+            .on('pointerup', () => { 
+                this.jumpButtonPressed = false;
+                jumpBtn.setAlpha(0.2);
+            })
+            .on('pointerout', () => { 
+                this.jumpButtonPressed = false;
+                jumpBtn.setAlpha(0.2);
+            });
         
-        this.add.text(680, 520, 'JUMP', { fontSize: '16px', fill: '#fff' })
+        this.add.text(680, 500, 'JUMP', { fontSize: '18px', fill: '#fff', fontStyle: 'bold' })
             .setOrigin(0.5)
             .setScrollFactor(0);
     }
