@@ -1,193 +1,221 @@
-// Simple Phaser 3 platformer inspired by your Python game
-const WIDTH = Math.min(window.innerWidth, 900);
-const HEIGHT = Math.round(WIDTH * 0.66);
+// --- Game Config ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 800;
+canvas.height = 400;
 
-const config = {
-  type: Phaser.AUTO,
-  parent: 'gameContainer',
-  width: WIDTH,
-  height: HEIGHT,
-  backgroundColor: 0x87ceeb,
-  physics: {
-    default: 'arcade',
-    arcade: { gravity: { y: 1000 }, debug: false }
-  },
-  scene: { preload, create, update }
+const gravity = 0.6;
+const jumpPower = -12;
+const playerSpeed = 5;
+let currentLevel = 0;
+let score = 0;
+
+// --- Assets ---
+const playerImg = new Image();
+playerImg.src = 'assets/player.png';
+const coinImg = new Image();
+coinImg.src = 'assets/coin.png';
+const enemyImg = new Image();
+enemyImg.src = 'assets/kiromi.png';
+const platformImg = new Image();
+platformImg.src = 'assets/platform.png';
+
+// --- Player ---
+const player = {
+    x: 50, y: 300, width: 32, height: 32,
+    dx: 0, dy: 0, onGround: false
 };
 
-const game = new Phaser.Game(config);
-
-function preload() {
-  // Replace these with your actual assets placed in assets/
-  this.load.image('bg', 'assets/background.png');             // optional background
-  this.load.image('platform', 'assets/platform.png');        // optional platform image
-  this.load.image('coin', 'assets/coin.png');                // optional coin
-  this.load.image('hello', 'assets/hello kitty.png');        // your provided kitty image
-  this.load.image('kuromi', 'assets/kiromi.png');            // enemy image
-}
-
-let player, cursors, leftDown=false, rightDown=false, jumpDown=false;
-let score = 0, scoreText, lives = 3, livesText;
-let coins, platforms, enemies;
-
-function create() {
-  // background (if present)
-  if (this.textures.exists('bg')) {
-    this.add.image(WIDTH/2, HEIGHT/2, 'bg').setDisplaySize(WIDTH, HEIGHT);
-  } else {
-    this.add.rectangle(WIDTH/2, HEIGHT/2, WIDTH, HEIGHT, 0xd0f4f7);
-  }
-
-  // static platforms group (ground + a few floating)
-  platforms = this.physics.add.staticGroup();
-  // ground
-  platforms.create(WIDTH/2, HEIGHT - 16, 'platform')?.setScale(WIDTH/200, 0.5).refreshBody();
-  // fallback if platform image missing: create graphics
-  if (!this.textures.exists('platform')) {
-    const g = this.add.graphics();
-    g.fillStyle(0x5c3c1a, 1);
-    g.fillRect(0, HEIGHT - 32, WIDTH, 32);
-  } else {
-    platforms.create(150, HEIGHT - 140, 'platform').refreshBody();
-    platforms.create(WIDTH - 150, HEIGHT - 230, 'platform').refreshBody();
-    platforms.create(WIDTH/2, HEIGHT - 320, 'platform').refreshBody();
-  }
-
-  // player (use image—single frame)
-  player = this.physics.add.sprite(100, HEIGHT - 150, 'hello');
-  player.setBounce(0.1);
-  player.setCollideWorldBounds(true);
-  player.setScale(0.12); // scale down common large PNGs
-  player.body.setSize(player.width*0.8, player.height*0.9, true);
-
-  this.physics.add.collider(player, platforms);
-
-  // coins group (procedurally placed)
-  coins = this.physics.add.group();
-  for (let i = 0; i < 8; i++) {
-    let x = 120 + i * (WIDTH - 240) / 7;
-    let y = Phaser.Math.Between(50, HEIGHT - 200);
-    let c = coins.create(x, y, 'coin');
-    if (c) {
-      c.setBounceY(Phaser.Math.FloatBetween(0.3, 0.8));
-      c.setScale(c.displayWidth ? 0.5 : 0.08);
-    } else {
-      // if coin image missing, draw small circle
-      const circ = this.add.circle(x, y, 10, 0xffd700);
-      this.physics.add.existing(circ);
-      circ.body.setBounce(0.5);
-      circ.body.setCollideWorldBounds(true);
-      coins.add(circ);
+// --- Levels ---
+const levels = [
+    {
+        coins: [
+            {x: 200, y: 320}, {x: 400, y: 320}, {x: 600, y: 250}, {x: 650, y: 320}
+        ],
+        platforms: [
+            {x: 550, y: 280, width: 100, height: 20}
+        ],
+        enemies: [
+            {x: 500, y: 320, width: 32, height: 32, alive: true}
+        ]
+    },
+    {
+        coins: [
+            {x: 150, y: 320}, {x: 350, y: 250}, {x: 500, y: 180}, {x: 700, y: 320}
+        ],
+        platforms: [
+            {x: 300, y: 280, width: 100, height: 20},
+            {x: 480, y: 210, width: 100, height: 20}
+        ],
+        enemies: [
+            {x: 400, y: 320, width: 32, height: 32, alive: true},
+            {x: 650, y: 320, width: 32, height: 32, alive: true}
+        ]
+    },
+    {
+        coins: [
+            {x: 200, y: 320}, {x: 250, y: 250}, {x: 400, y: 180}, {x: 600, y: 320}, {x: 750, y: 250}
+        ],
+        platforms: [
+            {x: 220, y: 280, width: 80, height: 20},
+            {x: 380, y: 210, width: 100, height: 20},
+            {x: 700, y: 280, width: 100, height: 20}
+        ],
+        enemies: [
+            {x: 300, y: 320, width: 32, height: 32, alive: true},
+            {x: 500, y: 320, width: 32, height: 32, alive: true},
+            {x: 650, y: 320, width: 32, height: 32, alive: true}
+        ]
+    },
+    {
+        coins: [
+            {x: 150, y: 250}, {x: 350, y: 180}, {x: 500, y: 320}, {x: 700, y: 250}
+        ],
+        platforms: [
+            {x: 130, y: 210, width: 100, height: 20},
+            {x: 300, y: 140, width: 100, height: 20},
+            {x: 650, y: 210, width: 100, height: 20}
+        ],
+        enemies: [
+            {x: 200, y: 320, width: 32, height: 32, alive: true},
+            {x: 400, y: 320, width: 32, height: 32, alive: true},
+            {x: 550, y: 320, width: 32, height: 32, alive: true}
+        ]
+    },
+    {
+        coins: [
+            {x: 100, y: 250}, {x: 250, y: 180}, {x: 400, y: 110}, {x: 550, y: 180}, {x: 700, y: 250}
+        ],
+        platforms: [
+            {x: 80, y: 210, width: 100, height: 20},
+            {x: 230, y: 140, width: 100, height: 20},
+            {x: 380, y: 70, width: 100, height: 20},
+            {x: 530, y: 140, width: 100, height: 20},
+            {x: 680, y: 210, width: 100, height: 20}
+        ],
+        enemies: [
+            {x: 150, y: 320, width: 32, height: 32, alive: true},
+            {x: 300, y: 320, width: 32, height: 32, alive: true},
+            {x: 450, y: 320, width: 32, height: 32, alive: true},
+            {x: 600, y: 320, width: 32, height: 32, alive: true}
+        ]
     }
-  }
-  this.physics.add.collider(coins, platforms);
-  this.physics.add.overlap(player, coins, collectCoin, null, this);
+];
 
-  // enemies (Kuromi) - simple patrols
-  enemies = this.physics.add.group();
-  const enemyA = enemies.create(WIDTH - 140, HEIGHT - 260, 'kuromi');
-  if (enemyA) { enemyA.setScale(0.12); enemyA.setCollideWorldBounds(true); enemyA.setVelocityX(-60); }
-  const enemyB = enemies.create(WIDTH/2, HEIGHT - 380, 'kuromi');
-  if (enemyB) { enemyB.setScale(0.12); enemyB.setCollideWorldBounds(true); enemyB.setVelocityX(50); }
+// --- Input ---
+const keys = {};
+document.addEventListener('keydown', e => keys[e.code] = true);
+document.addEventListener('keyup', e => keys[e.code] = false);
 
-  this.physics.add.collider(enemies, platforms);
-  this.physics.add.collider(player, enemies, hitEnemy, null, this);
+// --- Game Loop ---
+function update() {
+    // Horizontal movement
+    if (keys['ArrowRight']) player.dx = playerSpeed;
+    else if (keys['ArrowLeft']) player.dx = -playerSpeed;
+    else player.dx = 0;
 
-  // UI
-  scoreText = this.add.text(12, 12, 'Score: 0', { fontSize: '20px', fill: '#000' }).setScrollFactor(0);
-  livesText = this.add.text(12, 36, 'Lives: 3', { fontSize: '20px', fill: '#000' }).setScrollFactor(0);
-
-  // keyboard cursors
-  cursors = this.input.keyboard.createCursorKeys();
-
-  // Mobile touch buttons
-  setupTouchControls(this);
-}
-
-function collectCoin(player, coin) {
-  if (!coin.active) return;
-  coin.disableBody ? coin.disableBody(true, true) : coin.destroy();
-  score += 10;
-  scoreText.setText('Score: ' + score);
-}
-
-function hitEnemy(player, enemy) {
-  // simple collision: if player falls onto enemy, kill enemy; else lose life
-  if (player.body.velocity.y > 100) {
-    // stomped
-    if (enemy.disableBody) { enemy.disableBody(true,true); } else { enemy.destroy(); }
-    player.setVelocityY(-200);
-    score += 20;
-    scoreText.setText('Score: ' + score);
-  } else {
-    // take damage / respawn
-    lives -= 1;
-    livesText.setText('Lives: ' + lives);
-    if (lives <= 0) {
-      this.scene.pause();
-      this.add.text(WIDTH/2, HEIGHT/2, 'Game Over', { fontSize: '48px', fill:'#000' }).setOrigin(0.5);
-    } else {
-      // small invulnerability blink and respawn
-      player.setTint(0xff0000);
-      player.x = 100; player.y = HEIGHT - 150;
-      setTimeout(()=> player.clearTint(), 800);
+    // Jump
+    if (keys['Space'] && player.onGround) {
+        player.dy = jumpPower;
+        player.onGround = false;
     }
-  }
+
+    // Apply gravity
+    player.dy += gravity;
+    player.x += player.dx;
+    player.y += player.dy;
+
+    // Ground collision
+    if (player.y + player.height >= canvas.height - 50) {
+        player.y = canvas.height - 50 - player.height;
+        player.dy = 0;
+        player.onGround = true;
+    }
+
+    // Platform collisions
+    for (let p of levels[currentLevel].platforms) {
+        if (player.x < p.x + p.width && player.x + player.width > p.x &&
+            player.y + player.height <= p.y + 10 && player.y + player.height + player.dy >= p.y) {
+            player.y = p.y - player.height;
+            player.dy = 0;
+            player.onGround = true;
+        }
+    }
+
+    // Coin collection
+    levels[currentLevel].coins = levels[currentLevel].coins.filter(c => {
+        if (player.x < c.x + 16 && player.x + player.width > c.x &&
+            player.y < c.y + 16 && player.y + player.height > c.y) {
+            score += 10;
+            return false;
+        }
+        return true;
+    });
+
+    // Enemy collisions
+    for (let e of levels[currentLevel].enemies) {
+        if (!e.alive) continue;
+        if (player.x < e.x + e.width && player.x + player.width > e.x &&
+            player.y < e.y + e.height && player.y + player.height > e.y) {
+            if (player.dy > 0) { // Jump kill
+                e.alive = false;
+                player.dy = jumpPower / 2; // bounce
+                score += 20;
+            } else {
+                // Player hit
+                alert("Game Over!");
+                document.location.reload();
+            }
+        }
+    }
+
+    // Next level
+    if (levels[currentLevel].coins.length === 0) {
+        currentLevel++;
+        if (currentLevel >= levels.length) {
+            alert("You Win! Final Score: " + score);
+            document.location.reload();
+        } else {
+            player.x = 50; player.y = 300; player.dy = 0;
+        }
+    }
 }
 
-function update(time, delta) {
-  // enemy simple patrol flip
-  enemies.children.iterate((e) => {
-    if (!e || !e.body) return;
-    if (e.body.blocked.left) e.setVelocityX(60);
-    if (e.body.blocked.right) e.setVelocityX(-60);
-  });
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // input handling
-  const onGround = player.body.touching.down || player.body.blocked.down;
+    // Draw ground
+    ctx.fillStyle = '#88c070';
+    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
 
-  let moveVel = 160;
-  if (cursors.left.isDown || leftDown) {
-    player.setVelocityX(-moveVel);
-    player.flipX = true;
-  } else if (cursors.right.isDown || rightDown) {
-    player.setVelocityX(moveVel);
-    player.flipX = false;
-  } else {
-    player.setVelocityX(0);
-  }
+    // Draw player
+    ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
 
-  // jump: keyboard or touch
-  if ((Phaser.Input.Keyboard.JustDown(cursors.up) || Phaser.Input.Keyboard.JustDown(cursors.space) || jumpDown) && onGround) {
-    player.setVelocityY(-480);
-    jumpDown = false; // single jump per press
-  }
+    // Draw coins
+    for (let c of levels[currentLevel].coins) {
+        ctx.drawImage(coinImg, c.x, c.y, 16, 16);
+    }
+
+    // Draw platforms
+    for (let p of levels[currentLevel].platforms) {
+        ctx.drawImage(platformImg, p.x, p.y, p.width, p.height);
+    }
+
+    // Draw enemies
+    for (let e of levels[currentLevel].enemies) {
+        if (e.alive) ctx.drawImage(enemyImg, e.x, e.y, e.width, e.height);
+    }
+
+    // Score
+    ctx.fillStyle = '#000';
+    ctx.font = '20px Arial';
+    ctx.fillText("Score: " + score, 20, 30);
 }
 
-// --- Touch control wiring ---
-function setupTouchControls(scene) {
-  // hide controls if desktop
-  if (!scene.sys.game.device.os.desktop) {
-    document.getElementById('touchControls').style.display = 'block';
-  } else {
-    document.getElementById('touchControls').style.display = 'none';
-  }
-
-  const btnLeft = document.getElementById('btnLeft');
-  const btnRight = document.getElementById('btnRight');
-  const btnJump = document.getElementById('btnJump');
-
-  const setTouch = (el, start, end) => {
-    if (!el) return;
-    el.addEventListener('touchstart', (e)=>{ e.preventDefault(); start(); }, {passive:false});
-    el.addEventListener('touchend', (e)=>{ e.preventDefault(); end(); }, {passive:false});
-    el.addEventListener('mousedown', (e)=>{ e.preventDefault(); start(); });
-    el.addEventListener('mouseup', (e)=>{ e.preventDefault(); end(); });
-    el.addEventListener('mouseleave', (e)=>{ e.preventDefault(); end(); });
-  };
-
-  setTouch(btnLeft, ()=>{ leftDown=true; }, ()=>{ leftDown=false; });
-  setTouch(btnRight, ()=>{ rightDown=true; }, ()=>{ rightDown=false; });
-  setTouch(btnJump, ()=>{ jumpDown=true; setTimeout(()=> jumpDown=false, 200); }, ()=>{ jumpDown=false; });
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
 }
 
+gameLoop();
