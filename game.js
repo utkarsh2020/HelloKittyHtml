@@ -13,6 +13,7 @@ class BaseLevel extends Phaser.Scene {
         this.load.image('powerup', 'assets/coin.png');
         this.load.image('player', 'assets/hello_kitty.png');
         this.load.image('enemy', 'assets/kiromi.png');
+        this.load.image('flag', 'assets/kitty_flag.png');
     }
 
     create() {
@@ -26,6 +27,9 @@ class BaseLevel extends Phaser.Scene {
         this.powerUpTimer = 0;
         this.invincible = false;
         this.invincibleTimer = 0;
+        this.allCoinsCollected = false;
+        this.flag = null;
+        this.gameOver = false;
 
         // Platforms - exact layout from Python implementation
         this.platforms = this.physics.add.staticGroup();
@@ -46,6 +50,9 @@ class BaseLevel extends Phaser.Scene {
         // Enemies based on level
         this.enemies = this.physics.add.group();
         this.createEnemies();
+        
+        // Flag for level completion (initially hidden)
+        this.flagGroup = this.physics.add.group();
 
         // Physics colliders
         this.physics.add.collider(this.player, this.platforms);
@@ -56,6 +63,7 @@ class BaseLevel extends Phaser.Scene {
         this.physics.add.overlap(this.player, this.coins, this.collectCoin, null, this);
         this.physics.add.overlap(this.player, this.powerups, this.collectPowerup, null, this);
         this.physics.add.overlap(this.player, this.enemies, this.hitEnemy, null, this);
+        this.physics.add.overlap(this.player, this.flagGroup, this.touchFlag, null, this);
 
         // Input controls
         this.cursors = this.input.keyboard.createCursorKeys();
@@ -64,6 +72,9 @@ class BaseLevel extends Phaser.Scene {
         // UI Text
         this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '24px', fill: '#000' });
         this.livesText = this.add.text(16, 50, 'Lives: 3', { fontSize: '24px', fill: '#000' });
+        
+        // Mobile controls
+        this.createMobileControls();
     }
 
     createBackground() {
@@ -75,35 +86,34 @@ class BaseLevel extends Phaser.Scene {
         // Ground platform
         this.platforms.create(400, 580, 'ground').setScale(10, 1).refreshBody();
         
-        // Level-specific platforms based on Python implementation
+        // Level-specific platforms with proper vertical spacing (player height = 40px, so 80px+ gaps)
         if (this.level === 1) {
-            this.platforms.create(250, 470, 'ground').setScale(1.25, 0.33).refreshBody();
-            this.platforms.create(450, 370, 'ground').setScale(1.25, 0.33).refreshBody();
-            this.platforms.create(650, 270, 'ground').setScale(1.25, 0.33).refreshBody();
+            this.platforms.create(250, 450, 'ground').setScale(1.25, 0.33).refreshBody();
+            this.platforms.create(450, 350, 'ground').setScale(1.25, 0.33).refreshBody();
+            this.platforms.create(650, 250, 'ground').setScale(1.25, 0.33).refreshBody();
         } else if (this.level === 2) {
-            this.platforms.create(190, 520, 'ground').setScale(1, 0.33).refreshBody();
-            this.platforms.create(340, 420, 'ground').setScale(1, 0.33).refreshBody();
-            this.platforms.create(540, 320, 'ground').setScale(1, 0.33).refreshBody();
-            this.platforms.create(140, 220, 'ground').setScale(1, 0.33).refreshBody();
-            this.platforms.create(700, 170, 'ground').setScale(1.25, 0.33).refreshBody();
+            this.platforms.create(190, 500, 'ground').setScale(1, 0.33).refreshBody();
+            this.platforms.create(340, 400, 'ground').setScale(1, 0.33).refreshBody();
+            this.platforms.create(540, 300, 'ground').setScale(1, 0.33).refreshBody();
+            this.platforms.create(140, 200, 'ground').setScale(1, 0.33).refreshBody();
+            this.platforms.create(700, 150, 'ground').setScale(1.25, 0.33).refreshBody();
         } else if (this.level === 3) {
-            this.platforms.create(130, 500, 'ground').setScale(0.75, 0.33).refreshBody();
-            this.platforms.create(280, 440, 'ground').setScale(0.75, 0.33).refreshBody();
-            this.platforms.create(430, 380, 'ground').setScale(0.75, 0.33).refreshBody();
-            this.platforms.create(580, 320, 'ground').setScale(0.75, 0.33).refreshBody();
-            this.platforms.create(230, 260, 'ground').setScale(0.75, 0.33).refreshBody();
-            this.platforms.create(430, 200, 'ground').setScale(0.75, 0.33).refreshBody();
-            this.platforms.create(650, 140, 'ground').setScale(1.25, 0.33).refreshBody();
+            // Level 3: Much better spacing - at least 100px between platforms
+            this.platforms.create(130, 460, 'ground').setScale(0.75, 0.33).refreshBody();
+            this.platforms.create(300, 350, 'ground').setScale(0.75, 0.33).refreshBody();
+            this.platforms.create(500, 240, 'ground').setScale(0.75, 0.33).refreshBody();
+            this.platforms.create(200, 130, 'ground').setScale(0.75, 0.33).refreshBody();
+            this.platforms.create(650, 350, 'ground').setScale(0.75, 0.33).refreshBody();
         }
     }
 
     createCollectibles() {
-        // Level-specific collectibles based on Python implementation
+        // Level-specific collectibles with adjusted positions for new platform heights
         if (this.level === 1) {
             // Coins
             const coinPositions = [
-                {x: 240, y: 440}, {x: 440, y: 340}, {x: 640, y: 240},
-                {x: 70, y: 480}, {x: 770, y: 480}
+                {x: 240, y: 420}, {x: 440, y: 320}, {x: 640, y: 220},
+                {x: 70, y: 500}, {x: 750, y: 500}
             ];
             coinPositions.forEach(pos => {
                 const coin = this.coins.create(pos.x, pos.y, 'coin');
@@ -119,8 +129,8 @@ class BaseLevel extends Phaser.Scene {
         } else if (this.level === 2) {
             // More coins
             const coinPositions = [
-                {x: 190, y: 490}, {x: 340, y: 390}, {x: 540, y: 290},
-                {x: 140, y: 190}, {x: 700, y: 140}
+                {x: 190, y: 470}, {x: 340, y: 370}, {x: 540, y: 270},
+                {x: 140, y: 170}, {x: 700, y: 120}
             ];
             coinPositions.forEach(pos => {
                 const coin = this.coins.create(pos.x, pos.y, 'coin');
@@ -138,10 +148,10 @@ class BaseLevel extends Phaser.Scene {
             powerup2.setTint(0xff6600); // Orange tint to distinguish from coins
             
         } else if (this.level === 3) {
-            // Challenge level coins
+            // Challenge level coins - adjusted for new platform positions
             const coinPositions = [
-                {x: 130, y: 470}, {x: 280, y: 410}, {x: 430, y: 350},
-                {x: 580, y: 290}, {x: 230, y: 230}, {x: 430, y: 170}, {x: 650, y: 110}
+                {x: 130, y: 430}, {x: 300, y: 320}, {x: 500, y: 210},
+                {x: 200, y: 100}, {x: 650, y: 320}, {x: 400, y: 500}
             ];
             coinPositions.forEach(pos => {
                 const coin = this.coins.create(pos.x, pos.y, 'coin');
@@ -149,12 +159,12 @@ class BaseLevel extends Phaser.Scene {
                 // Remove tint to show actual coin image
             });
             
-            // Multiple power-ups for final level
-            const powerup1 = this.powerups.create(280, 400, 'powerup');
+            // Multiple power-ups for final level - adjusted positions
+            const powerup1 = this.powerups.create(300, 310, 'powerup');
             powerup1.setDisplaySize(20, 20);
             powerup1.setTint(0xff6600); // Orange tint to distinguish from coins
             
-            const powerup2 = this.powerups.create(430, 160, 'powerup');
+            const powerup2 = this.powerups.create(200, 90, 'powerup');
             powerup2.setDisplaySize(20, 20);
             powerup2.setTint(0xff6600); // Orange tint to distinguish from coins
         }
@@ -173,13 +183,13 @@ class BaseLevel extends Phaser.Scene {
             this.spawnEnemy(400, 540, 'normal');
             this.spawnEnemy(600, 540, 'normal');
         } else if (this.level === 3) {
-            this.spawnEnemy(150, 480, 'fast');
-            this.spawnEnemy(300, 420, 'jumper');
-            this.spawnEnemy(450, 360, 'fast');
-            this.spawnEnemy(250, 240, 'jumper');
+            this.spawnEnemy(150, 440, 'fast');
+            this.spawnEnemy(320, 330, 'jumper');
+            this.spawnEnemy(520, 220, 'fast');
+            this.spawnEnemy(220, 110, 'jumper');
             this.spawnEnemy(200, 540, 'normal');
             this.spawnEnemy(500, 540, 'normal');
-            this.spawnEnemy(700, 540, 'fast');
+            this.spawnEnemy(670, 330, 'fast');
         }
     }
 
@@ -210,9 +220,10 @@ class BaseLevel extends Phaser.Scene {
         this.score += 10;
         this.scoreText.setText('Score: ' + this.score);
         
-        // Check if all coins collected for level completion
-        if (this.coins.countActive(true) === 0 && this.powerups.countActive(true) === 0) {
-            this.levelComplete();
+        // Check if all coins collected to spawn flag
+        if (this.coins.countActive(true) === 0 && !this.allCoinsCollected) {
+            this.allCoinsCollected = true;
+            this.spawnFlag();
         }
     }
     
@@ -225,11 +236,51 @@ class BaseLevel extends Phaser.Scene {
         
         // Visual feedback - golden outline like Python
         this.player.setTint(0xffff00); // Yellow/golden tint
+    }
+    
+    spawnFlag() {
+        // Spawn flag on ground or platforms only, never in air
+        const flagPositions = [];
         
-        // Check if all collectibles gathered
-        if (this.coins.countActive(true) === 0 && this.powerups.countActive(true) === 0) {
-            this.levelComplete();
+        // Always add ground positions
+        flagPositions.push(
+            {x: 100, y: 520}, {x: 300, y: 520}, {x: 500, y: 520}, {x: 700, y: 520}
+        );
+        
+        // Add platform positions based on level
+        if (this.level === 1) {
+            flagPositions.push(
+                {x: 250, y: 410}, {x: 450, y: 310}, {x: 650, y: 210}
+            );
+        } else if (this.level === 2) {
+            flagPositions.push(
+                {x: 190, y: 460}, {x: 340, y: 360}, {x: 540, y: 260}, {x: 140, y: 160}, {x: 700, y: 110}
+            );
+        } else if (this.level === 3) {
+            flagPositions.push(
+                {x: 130, y: 420}, {x: 300, y: 310}, {x: 500, y: 200}, {x: 200, y: 90}, {x: 650, y: 310}
+            );
         }
+        
+        const randomPos = Phaser.Utils.Array.GetRandom(flagPositions);
+        this.flag = this.flagGroup.create(randomPos.x, randomPos.y, 'flag');
+        this.flag.setDisplaySize(60, 80); // Make flag visible
+        this.flag.setTint(0x00ff00); // Green tint to make it stand out
+        
+        // Add gentle floating animation
+        this.tweens.add({
+            targets: this.flag,
+            y: this.flag.y - 5,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+    }
+    
+    touchFlag(player, flag) {
+        flag.disableBody(true, true);
+        this.levelComplete();
     }
     
     levelComplete() {
@@ -266,6 +317,16 @@ class BaseLevel extends Phaser.Scene {
     }
     
     gameOver() {
+        this.gameOver = true;
+        
+        // Stop all physics and animations
+        this.physics.pause();
+        
+        // Disable mobile controls
+        this.leftPressed = false;
+        this.rightPressed = false;
+        this.jumpPressed = false;
+        
         this.add.text(400, 300, 'Game Over!\nPress R to restart', 
             { fontSize: '32px', fill: '#ff0000', align: 'center' }).setOrigin(0.5);
         
@@ -275,6 +336,11 @@ class BaseLevel extends Phaser.Scene {
     }
 
     update() {
+        // Stop all updates if game is over
+        if (this.gameOver) {
+            return;
+        }
+        
         // Power-up timer (like Python version)
         if (this.playerPoweredUp) {
             this.powerUpTimer -= 1;
@@ -310,27 +376,108 @@ class BaseLevel extends Phaser.Scene {
             // Horizontal movement
             enemy.setVelocityX(enemy.speed * enemy.direction);
             
-            // Boundary checking
-            if (enemy.x <= 0 || enemy.x >= 765) {
+            // Improved boundary and platform edge detection
+            const nextX = enemy.x + (enemy.speed * enemy.direction * 0.1); // Predict next position
+            
+            // Turn around at screen edges
+            if (nextX <= 0 || nextX >= 765) {
                 enemy.direction *= -1;
+                enemy.setVelocityX(enemy.speed * enemy.direction);
+                return; // Skip other checks this frame
+            }
+            
+            // Check if enemy will fall off platform
+            if (enemy.body.touching.down) {
+                let willFall = true;
+                const futureX = nextX + (enemy.width / 2);
+                
+                this.platforms.children.entries.forEach(platform => {
+                    const platformRect = platform.getBounds();
+                    if (enemy.y + enemy.height >= platformRect.top - 5 && 
+                        enemy.y + enemy.height <= platformRect.bottom + 5 &&
+                        futureX >= platformRect.left && 
+                        futureX <= platformRect.right) {
+                        willFall = false;
+                    }
+                });
+                
+                // Also check ground
+                if (enemy.y + enemy.height >= 540 && futureX >= 0 && futureX <= 800) {
+                    willFall = false;
+                }
+                
+                if (willFall) {
+                    enemy.direction *= -1;
+                    enemy.setVelocityX(enemy.speed * enemy.direction);
+                }
             }
         });
 
-        // Player movement (like Python version)
-        if (this.cursors.left.isDown) {
-            this.player.setVelocityX(-180);
-            this.player.setFlipX(true);
-        } else if (this.cursors.right.isDown) {
-            this.player.setVelocityX(180);
-            this.player.setFlipX(false);
-        } else {
-            this.player.setVelocityX(0);
-        }
+        // Player movement (like Python version) - Include mobile controls
+        if (!this.gameOver) {
+            if (this.cursors.left.isDown || this.leftPressed) {
+                this.player.setVelocityX(-180);
+                this.player.setFlipX(true);
+            } else if (this.cursors.right.isDown || this.rightPressed) {
+                this.player.setVelocityX(180);
+                this.player.setFlipX(false);
+            } else {
+                this.player.setVelocityX(0);
+            }
 
-        // Jumping (like Python version) - Fixed spacebar detection
-        if ((this.cursors.up.isDown || this.spaceKey.isDown) && this.player.body.touching.down) {
-            this.player.setVelocityY(-480);
+            // Jumping (like Python version) - Fixed spacebar detection
+            if ((this.cursors.up.isDown || this.spaceKey.isDown || this.jumpPressed) && this.player.body.touching.down) {
+                this.player.setVelocityY(-480);
+            }
         }
+        
+        // Reset mobile control flags
+        this.leftPressed = false;
+        this.rightPressed = false;
+        this.jumpPressed = false;
+    }
+    
+    createMobileControls() {
+        // Mobile control flags
+        this.leftPressed = false;
+        this.rightPressed = false;
+        this.jumpPressed = false;
+        
+        // Left button
+        const leftBtn = this.add.rectangle(80, 520, 60, 60, 0x000000, 0.3)
+            .setScrollFactor(0)
+            .setInteractive()
+            .on('pointerdown', () => { this.leftPressed = true; })
+            .on('pointerup', () => { this.leftPressed = false; })
+            .on('pointerout', () => { this.leftPressed = false; });
+        
+        this.add.text(80, 520, '←', { fontSize: '32px', fill: '#fff' })
+            .setOrigin(0.5)
+            .setScrollFactor(0);
+        
+        // Right button
+        const rightBtn = this.add.rectangle(160, 520, 60, 60, 0x000000, 0.3)
+            .setScrollFactor(0)
+            .setInteractive()
+            .on('pointerdown', () => { this.rightPressed = true; })
+            .on('pointerup', () => { this.rightPressed = false; })
+            .on('pointerout', () => { this.rightPressed = false; });
+        
+        this.add.text(160, 520, '→', { fontSize: '32px', fill: '#fff' })
+            .setOrigin(0.5)
+            .setScrollFactor(0);
+        
+        // Jump button
+        const jumpBtn = this.add.rectangle(680, 520, 80, 60, 0x000000, 0.3)
+            .setScrollFactor(0)
+            .setInteractive()
+            .on('pointerdown', () => { this.jumpPressed = true; })
+            .on('pointerup', () => { this.jumpPressed = false; })
+            .on('pointerout', () => { this.jumpPressed = false; });
+        
+        this.add.text(680, 520, 'JUMP', { fontSize: '16px', fill: '#fff' })
+            .setOrigin(0.5)
+            .setScrollFactor(0);
     }
 }
 
