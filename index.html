@@ -1,97 +1,37 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
-    <title>Hello Kitty Game</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            text-align: center;
-            background-color: #ffe4f2;
-        }
-        canvas {
-            background-color: #fff0f5;
-            display: block;
-            margin: 0 auto;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <title>Hello Kitty Platformer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <style>
+    html,body { height:100%; margin:0; background:#87ceeb; }
+    #gameContainer { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+    canvas { max-width:100%; height:auto; }
+    /* mobile touch buttons */
+    .touch-controls { position: absolute; bottom: 20px; left: 0; right: 0; pointer-events: none; }
+    .btn { pointer-events: auto; display:inline-block; width:64px; height:64px; margin:0 12px; border-radius:12px;
+           background: rgba(255,255,255,0.25); text-align:center; line-height:64px; font-weight:bold; color:#000; user-select:none; }
+    .left { margin-left: 20px; }
+    .right { }
+    .jump { position:absolute; right:20px; bottom:20px; }
+  </style>
 </head>
 <body>
-    <h1>Hello Kitty Game</h1>
-    <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <div id="gameContainer"></div>
 
-    <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
+  <!-- Phaser 3 -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
+  <!-- Game script -->
+  <script src="game.js"></script>
 
-        const kittyImg = new Image();
-        kittyImg.src = "assets/hello_kitty.png"; // your uploaded image
-
-        const kiromiImg = new Image();
-        kiromiImg.src = "assets/kiromi.png"; // your uploaded image
-
-        let kitty = { x: 200, y: 500, width: 50, height: 50, speed: 5 };
-        let obstacles = [];
-        let score = 0;
-
-        document.addEventListener("keydown", e => {
-            if (e.key === "ArrowLeft" && kitty.x > 0) {
-                kitty.x -= kitty.speed;
-            } else if (e.key === "ArrowRight" && kitty.x + kitty.width < canvas.width) {
-                kitty.x += kitty.speed;
-            }
-        });
-
-        function spawnObstacle() {
-            let x = Math.random() * (canvas.width - 50);
-            obstacles.push({ x, y: -50, width: 50, height: 50 });
-        }
-
-        function update() {
-            obstacles.forEach(obs => {
-                obs.y += 3;
-            });
-
-            obstacles = obstacles.filter(obs => obs.y < canvas.height);
-
-            // collision check
-            obstacles.forEach(obs => {
-                if (
-                    kitty.x < obs.x + obs.width &&
-                    kitty.x + kitty.width > obs.x &&
-                    kitty.y < obs.y + obs.height &&
-                    kitty.y + kitty.height > obs.y
-                ) {
-                    alert("Game Over! Score: " + score);
-                    document.location.reload();
-                }
-            });
-
-            score++;
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(kittyImg, kitty.x, kitty.y, kitty.width, kitty.height);
-
-            obstacles.forEach(obs => {
-                ctx.drawImage(kiromiImg, obs.x, obs.y, obs.width, obs.height);
-            });
-
-            ctx.fillStyle = "#000";
-            ctx.font = "20px Arial";
-            ctx.fillText("Score: " + score, 10, 20);
-        }
-
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
-        setInterval(spawnObstacle, 1500);
-        gameLoop();
-    </script>
+  <!-- Simple on-screen touch controls for mobile -->
+  <div class="touch-controls" id="touchControls" aria-hidden="true">
+    <div style="position:relative; width:100%; height:80px;">
+      <div class="btn left" id="btnLeft">◀</div>
+      <div class="btn right" id="btnRight">▶</div>
+      <div class="btn jump" id="btnJump" style="position:absolute; right:20px;">▲</div>
+    </div>
+  </div>
 </body>
 </html>
