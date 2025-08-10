@@ -1,37 +1,14 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>Hello Kitty Platformer</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-  <style>
-    html,body { height:100%; margin:0; background:#87ceeb; }
-    #gameContainer { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
-    canvas { max-width:100%; height:auto; }
-    /* mobile touch buttons */
-    .touch-controls { position: absolute; bottom: 20px; left: 0; right: 0; pointer-events: none; }
-    .btn { pointer-events: auto; display:inline-block; width:64px; height:64px; margin:0 12px; border-radius:12px;
-           background: rgba(255,255,255,0.25); text-align:center; line-height:64px; font-weight:bold; color:#000; user-select:none; }
-    .left { margin-left: 20px; }
-    .right { }
-    .jump { position:absolute; right:20px; bottom:20px; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Hello Kitty Coastal Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.js"></script>
 </head>
 <body>
-  <div id="gameContainer"></div>
+    <!-- The game canvas will be inserted here -->
+    <div id="game"></div>
 
-  <!-- Phaser 3 -->
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.min.js"></script>
-  <!-- Game script -->
-  <script src="game.js"></script>
-
-  <!-- Simple on-screen touch controls for mobile -->
-  <div class="touch-controls" id="touchControls" aria-hidden="true">
-    <div style="position:relative; width:100%; height:80px;">
-      <div class="btn left" id="btnLeft">◀</div>
-      <div class="btn right" id="btnRight">▶</div>
-      <div class="btn jump" id="btnJump" style="position:absolute; right:20px;">▲</div>
-    </div>
-  </div>
+    <script src="game.js"></script>
 </body>
 </html>
